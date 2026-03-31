@@ -1,7 +1,8 @@
 import { readConfigFile } from "./config-file.js";
-import { existsSync, realpathSync } from "node:fs";
-import { resolve } from "node:path";
-import { config as loadDotenv } from "dotenv";
+import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { randomBytes } from "node:crypto";
+import { config as loadDotenv, parse as parseEnvFileContents } from "dotenv";
 import { resolvePaperclipEnvPath } from "./paths.js";
 import { maybeRepairLegacyWorktreeConfigAndEnvFiles } from "./worktree-config.js";
 import {

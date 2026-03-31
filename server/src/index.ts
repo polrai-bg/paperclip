@@ -1,7 +1,8 @@
 /// <reference path="./types/express.d.ts" />
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { createServer } from "node:http";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { pathToFileURL } from "node:url";
@@ -459,6 +460,11 @@ export async function startServer(): Promise<StartedServer> {
   if (config.deploymentMode === "local_trusted") {
     await ensureLocalTrustedBoardPrincipal(db as any);
   }
+    if (!process.env.PAPERCLIP_AGENT_JWT_SECRET?.trim()) {
+      const generated = randomBytes(32).toString("hex");
+      process.env.PAPERCLIP_AGENT_JWT_SECRET = generated;
+      logger.info("Auto-generated PAPERCLIP_AGENT_JWT_SECRET for local_trusted mode");
+    }
   if (config.deploymentMode === "authenticated") {
     const {
       createBetterAuthHandler,
