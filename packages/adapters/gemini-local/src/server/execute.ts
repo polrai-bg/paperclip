@@ -324,7 +324,11 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       args.push("--sandbox=none");
     }
     if (extraArgs.length > 0) args.push(...extraArgs);
-    args.push("--prompt", prompt);
+    if (process.platform === "win32") {
+      args.push("--prompt", "");
+    } else {
+      args.push("--prompt", prompt);
+    }
     return args;
   };
 
@@ -353,6 +357,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       graceSec,
       onSpawn,
       onLog,
+      ...(process.platform === "win32" ? { stdin: prompt } : {}),
     });
     return {
       proc,

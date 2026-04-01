@@ -24,12 +24,12 @@
  * @see PLUGIN_SPEC.md §10 — Package Contract
  * @see PLUGIN_SPEC.md §12 — Process Model
  */
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { readdir, readFile, rm, stat } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import type { Db } from "@paperclipai/db";
 import type {
@@ -76,7 +76,8 @@ export const DEFAULT_LOCAL_PLUGIN_DIR = path.join(
   "plugins",
 );
 
-const DEV_TSX_LOADER_PATH = path.resolve(__dirname, "../../../cli/node_modules/tsx/dist/loader.mjs");
+const DEV_TSX_LOADER_RAW = path.resolve(__dirname, "../../../cli/node_modules/tsx/dist/loader.mjs");
+const DEV_TSX_LOADER_PATH = pathToFileURL(DEV_TSX_LOADER_RAW).href;
 
 // ---------------------------------------------------------------------------
 // Discovery result types
@@ -927,7 +928,7 @@ export function pluginLoader(
 
     try {
       // Dynamic import works for both .js (ESM) and .cjs (CJS) manifests
-      const mod = await import(manifestPath) as Record<string, unknown>;
+      const mod = await import(pathToFileURL(manifestPath).href) as Record<string, unknown>;
       // The manifest may be the default export or the module itself
       raw = mod["default"] ?? mod;
     } catch (err) {
@@ -1737,7 +1738,7 @@ export function pluginLoader(
       // Repo-local plugin installs can resolve workspace TS sources at runtime
       // (for example @paperclipai/shared exports). Run those workers through
       // the tsx loader so first-party example plugins work in development.
-      if (plugin.packagePath && existsSync(DEV_TSX_LOADER_PATH)) {
+      if (plugin.packagePath && existsSync(DEV_TSX_LOADER_RAW)) {
         workerOptions.execArgv = ["--import", DEV_TSX_LOADER_PATH];
       }
 
@@ -1892,7 +1893,7 @@ function resolveWorkerEntrypoint(
   if (plugin.packagePath && existsSync(plugin.packagePath)) {
     const entrypoint = path.resolve(plugin.packagePath, workerRelPath);
     if (entrypoint.startsWith(path.resolve(plugin.packagePath)) && existsSync(entrypoint)) {
-      return entrypoint;
+      return realpathSync(entrypoint);
     }
   }
 
@@ -1922,14 +1923,14 @@ function resolveWorkerEntrypoint(
     }
 
     if (existsSync(entrypoint)) {
-      return entrypoint;
+      return realpathSync(entrypoint);
     }
   }
 
   // Fallback: try the worker path as-is (absolute or relative to cwd)
   // ONLY if it's already an absolute path and we trust the manifest (which we've already validated)
   if (path.isAbsolute(workerRelPath) && existsSync(workerRelPath)) {
-    return workerRelPath;
+    return realpathSync(workerRelPath);
   }
 
   throw new Error(
